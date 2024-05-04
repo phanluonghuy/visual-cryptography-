@@ -1,13 +1,12 @@
 import random
 import string
-import cv2
-import matplotlib.pyplot as plt
+import os
 from PIL import Image, ImageFont, ImageDraw, ImageChops
 
 def generate_captcha_text():
     """Hàm tạo chuỗi captcha ngẫu nhiên."""
     characters = string.ascii_uppercase + string.digits
-    return ''.join(random.choice(characters) for i in range(5))
+    return ''.join(random.choice(characters) for _ in range(5))  # Sử dụng '_' cho biến không cần dùng
 
 def generate_captcha_image(captcha_text):
     """Hàm tạo ảnh captcha gốc."""
@@ -33,7 +32,6 @@ def create_noise_patterns():
     """Hàm tạo các mẫu nhiễu."""
     return [(1, 1, 0, 0), (1, 0, 1, 0), (1, 0, 0, 1),
             (0, 1, 1, 0), (0, 1, 0, 1), (0, 0, 1, 1)]
-
 
 def split_and_encode(image, patterns):
     """Chia ảnh và mã hóa thành hai phần."""
@@ -67,25 +65,37 @@ def split_and_encode(image, patterns):
                 draw_B.point((x*2+1, y*2+1), pattern[3])
 
     return out_image_A, out_image_B
-def create_share2(original_image : Image, share1 : Image):
 
-    # Kiểm tra kích thước của ảnh gốc và mảnh 1
-    if original_image.size != share1.size:
+def create_share2(original_image, share1):
+    """Tạo mảnh 2 từ ảnh gốc và mảnh 1 bằng phép toán XOR."""
+    share1_image = Image.open('base.png').convert('1')
+
+    if original_image.size != share1_image.size:
         raise ValueError("Kích thước của ảnh gốc và mảnh 1 không khớp!")
 
-    # Tạo mảnh 2 bằng phép XOR giữa ảnh gốc và mảnh 1
-    img_share2 = ImageChops.logical_xor(original_image,share1)
-
-    # Lưu mảnh 2 thành file ảnh
+    img_share2 = ImageChops.logical_xor(original_image, share1_image)
     return img_share2
-# Phần chính
-captcha_text = generate_captcha_text()
-captcha_image = generate_captcha_image(captcha_text)
-captcha_image.save('image.png')
-patterns = create_noise_patterns()
 
-image_A, image_B = split_and_encode(captcha_image, patterns)
-image_A.save('image_A.png')
-image_B.save('image_B.png')
-bit_image = create_share2(captcha_image,image_A)
-bit_image.save('bit_image.png')
+def save_image(image, image_path):
+    """Hàm lưu ảnh."""
+    image.save(image_path) 
+
+# Phần chính
+image_folder = "images"
+os.makedirs(image_folder, exist_ok=True)
+
+# Tạo ảnh base.png
+base_captcha_text = generate_captcha_text()
+base_captcha_image = generate_captcha_image(base_captcha_text)
+patterns = create_noise_patterns()
+base_image_A, _ = split_and_encode(base_captcha_image, patterns)
+base_image_A.save('base.png')
+
+# Tạo các ảnh captcha khác
+for _ in range(2):  # Lặp lại 2 lần cho ví dụ
+    captcha_text = generate_captcha_text()
+    captcha_image = generate_captcha_image(captcha_text)
+    patterns = create_noise_patterns()
+    image_A, _ = split_and_encode(captcha_image, patterns)
+    bit_image = create_share2(captcha_image, image_A)
+    save_image(bit_image, os.path.join(image_folder, captcha_text + '.png')) 
