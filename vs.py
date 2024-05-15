@@ -12,7 +12,7 @@ def generate_captcha_text():
 def generate_captcha_image(captcha_text):
     """Hàm tạo ảnh captcha gốc."""
     width = 1300
-    height = 300
+    height = 400
     background_color = (255, 255, 255)
     text_color = (0, 0, 0)
     font_size = 250
@@ -67,7 +67,7 @@ def split_and_encode(image, patterns):
 
     return out_image_A, out_image_B
 
-def create_share2(original_image, share1):
+def create_share2(original_image, hint):
     """Tạo mảnh 2 từ ảnh gốc và mảnh 1 bằng phép toán XOR."""
     share1_image = Image.open('base.png').convert('1')
 
@@ -75,6 +75,22 @@ def create_share2(original_image, share1):
         raise ValueError("Kích thước của ảnh gốc và mảnh 1 không khớp!")
 
     img_share2 = ImageChops.logical_xor(original_image, share1_image)
+    width, height = img_share2.size
+    draw = ImageDraw.Draw(img_share2)
+    # text = "sample watermark"
+    font = ImageFont.truetype('arial.ttf', 70)
+    # textwidth, textheight = font.getbbox(text)
+    # textwidth, textheight = 36, 36
+    # textwidth = font.textlength(text)
+    # textheight = font.getsize(text)[1]
+    _, _, textwidth, textheight = draw.textbbox((0, 0), text=hint, font=font)
+
+    margin = 10
+    x = width - textwidth - margin
+    y = height - textheight - margin
+    draw.text((x, y), hint, font=font)
+    # img_share2.show()
+
     return img_share2
 
 def save_image(image, image_path):
@@ -111,7 +127,7 @@ def transparent_img(img):
     img.putdata(newData)
     return img
 
-def register():
+def register(hint):
     # Phần chính
     image_folder = "images"
     # shutil.rmtree(image_folder)
@@ -137,6 +153,6 @@ def register():
         captcha_image = generate_captcha_image(captcha_text)
         patterns = create_noise_patterns()
         image_A, _ = split_and_encode(captcha_image, patterns)
-        bit_image = create_share2(captcha_image, image_A)
+        bit_image = create_share2(captcha_image, hint)
         bit_image = transparent_img(bit_image)
         save_image(bit_image, os.path.join(image_folder, captcha_text + '.png')) 
